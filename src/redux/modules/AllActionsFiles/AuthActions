@@ -1,0 +1,57 @@
+import { message } from 'antd';
+import Axios from 'axios'
+import store from '../AllStores/AuthStore';
+
+
+// product loader true
+
+function loader(bool) {
+    return dispatch => {
+        dispatch(loading(bool));
+    };
+}
+export const LOADING = 'LOADING';
+export const loading = (bool) => {
+    return {
+        type: LOADING,
+        payload: bool
+    }
+}
+
+// Register new user manually
+export function register(obj) {
+    return dispatch => {
+        dispatch(loader(true))
+        var data = new FormData();
+        data.append('email', obj.email);
+        data.append('first_name', obj.first_name);
+        data.append('last_name', obj.last_name);
+        data.append('password1', obj.password1);
+        data.append('password2', obj.password2);
+
+        var config = {
+            method: 'post',
+            url: 'http://54.250.74.4/rest-auth/registration/',
+            data: data
+        };
+
+        Axios(config)
+            .then((res) => {
+                // console.log(res);
+            })
+            .catch((error) => {
+                if (error.response) {
+                    if (error.response.data) {
+                        if (error.response.data.email) {
+                            message.error(error.response.data.email[0])
+                        }
+                    }
+                }
+            });
+    };
+}
+export const FETCH_SKINCARE_PRODUCTS_SUCCESS = 'FETCH_SKINCARE_PRODUCTS_SUCCESS';
+export const registerSuccess = (products, numberOfProducts, brands) => ({
+    type: FETCH_SKINCARE_PRODUCTS_SUCCESS,
+    payload: { products, numberOfProducts, brands }
+});

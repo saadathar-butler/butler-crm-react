@@ -1,0 +1,13 @@
+.cardView{
+    min-width: calc(100% - 220px);
+    min-height: 100%;
+}
+
+.ant-collapse-header{
+    display: flex;
+    align-items: center !important;
+}
+
+.ant-collapse-header-text{
+    font-size: 18px;
+}

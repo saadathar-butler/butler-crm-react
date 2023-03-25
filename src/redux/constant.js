@@ -1,0 +1,4 @@
+export const CATEGORIES = 'CATEGORIES';
+export const SUB_CATEGORIES = 'SUB_CATEGORIES';
+export const EMPTY_STATE_SUB = 'SUB_CATEGORIES';
+export const LOADING_TRUE = 'LOADING_TRUE';
