@@ -7,6 +7,30 @@ import { io } from 'socket.io-client'
 import UploadComponent from '../finance/upload';
 import { AudioRecorder } from 'react-audio-voice-recorder';
 
+import { Modal } from 'antd';
+
+const ImageModal = ({ imageUrl, visible, onClose }) => {
+    return (
+        <Modal
+            visible={visible}
+            onCancel={onClose}
+            footer={null}
+            width={400}
+        >
+            <img src={imageUrl} style={{ width: '100%' }} alt="Large version of image" />
+        </Modal>
+    );
+};
+
+
+function getDate() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = (today.getMonth() + 1).toString().padStart(2, '0');
+    const day = today.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
 const { Panel } = Collapse;
 
 // const socket = io('http://localhost:5000')
@@ -37,7 +61,7 @@ export default function Calls(props) {
     let [nearestLandmark, setNearestLandmark] = useState("")
     let [zone, setZone] = useState("")
     let [address, setAddress] = useState("")
-    let [scheduleDate, setScheduleDate] = useState("")
+    let [scheduleDate, setScheduleDate] = useState(getDate())
     let [scheduleTo, setScheduleTo] = useState("Worker")
     let [followupDate, setFollowupdate] = useState("")
     let [workerObj, setWorkerObj] = useState("")
@@ -52,11 +76,14 @@ export default function Calls(props) {
     let [checkedOutImage, setCheckedOutImage] = useState("")
     let [note, setNote] = useState("")
     let [workerNote, setWorkerNote] = useState("")
+    let [checkedIn, setCheckedIn] = useState(false)
+    let [checkedOut, setCheckedOut] = useState(false)
 
     let [services, setServices] = useState([])
     let [subServices, setSubServices] = useState([])
     let [selectedSubServices, setSelectedSubServices] = useState([])
     let [workers, setWorkers] = useState([])
+    let [vendors, setVendors] = useState([])
     let [jobs, setJobs] = useState([])
 
     let [selectedWorkerId, setSelectedWorkerId] = useState("")
@@ -129,9 +156,11 @@ export default function Calls(props) {
 
         axios(config)
             .then((res) => {
-                let arr = res.data.filter((a) => a.isActive)
-                setSelectedWorkerId(arr[0]._id)
+                let arr = res.data.filter((a) => a.isActive && a.workerOrVendor === "Worker")
+                let arr2 = res.data.filter((a) => a.isActive && a.workerOrVendor === "Vendor")
                 setWorkers(arr)
+                setVendors(arr2)
+                setSelectedWorkerId(arr[0]._id)
             })
     }
 
@@ -167,7 +196,7 @@ export default function Calls(props) {
 
     useEffect(() => {
         if (!props.editObj) {
-            setLeadNo(`L-${generateUID()}`)
+            // setLeadNo(`L-${generateUID()}`)
             setJobId(`J-${generateUID()}`)
         }
     }, [])
@@ -222,7 +251,8 @@ export default function Calls(props) {
             slot: slot,
             history: [],
             checkedIn: false,
-            checkedOut: false
+            checkedOut: false,
+            dateCreatedDate: new Date()
         }
 
         var config = {
@@ -235,7 +265,7 @@ export default function Calls(props) {
             .then((res) => {
                 newJob(obj)
                 getJobs()
-                setLeadNo(`L-${generateUID()}`)
+                // setLeadNo(`L-${generateUID()}`)
                 setJobId(`J-${generateUID()}`)
                 setCustomerName("")
                 setcustomerPhone("")
@@ -254,7 +284,7 @@ export default function Calls(props) {
                 setNearestLandmark("")
                 setZone("")
                 setAddress("")
-                setScheduleDate("")
+                setScheduleDate(getDate())
                 setScheduleTo("Worker")
                 setFollowupdate("")
                 setWorkerObj("")
@@ -268,6 +298,8 @@ export default function Calls(props) {
                 setVoiceNotes([])
                 setCheckedInImage("")
                 setCheckedOutImage("")
+                setCheckedIn(false)
+                setCheckedOut(false)
                 setServices([])
                 setSubServices([])
                 setSelectedWorkerId("")
@@ -294,7 +326,16 @@ export default function Calls(props) {
         hObj.updatedBy = activeUser.username
         hObj.updatedByID = activeUser._id
         history.unshift(JSON.stringify(hObj))
-        let workerObjj = workers.filter((a) => a._id === selectedWorkerId)[0]
+        let workerObjj;
+        let vendorObjj;
+        if (scheduleTo === "Worker") {
+            workerObjj = workers.filter((a) => a._id === selectedWorkerId)[0]
+        } else {
+            console.log(selectedWorkerId)
+            vendorObjj = vendors.filter((a) => a._id === selectedWorkerId)[0]
+        }
+
+        console.log(vendorObjj)
         let obj = {
             leadNo: leadNo,
             jobId: jobId,
@@ -319,20 +360,14 @@ export default function Calls(props) {
             customerFeedback: "",
             customerPhone: customerPhone,
             workerObj: [
-                workerObjj
+                scheduleTo === "Worker" ? workerObjj : []
             ],
             helpers: helpers,
             vendorObj: [
-                {
-                    vendorName: "",
-                    vendorTeam: "",
-                    vendorId: "",
-                    vendorTeamId: "",
-                    vendorRating: ""
-                }
+                scheduleTo === "Vendor" ? vendorObjj : []
             ],
             images: [],
-            voiceNotes: [],
+            voiceNotes: voiceNotes,
             amount: amount,
             forAccounts: [],
             scheduledDate: scheduleDate,
@@ -340,6 +375,8 @@ export default function Calls(props) {
             followUpDate: followupDate,
             dateContacted: "",
             slot: slot,
+            checkedIn: checkedIn,
+            checkedOut: checkedOut
             // history: history
         }
 
@@ -356,43 +393,45 @@ export default function Calls(props) {
                 // joinRoom(activeUser.id)
                 sendMessage(props.fromLeads ? props.editObj._id : selectedItem._id, obj)
                 getJobs()
-                setLeadNo(`L-${generateUID()}`)
-                setJobId(`J-${generateUID()}`)
-                setCustomerName("")
-                setcustomerPhone("")
-                setFormName("")
-                setDateCreated("")
-                setStatus("New")
-                setSource("")
-                setAmount("")
-                setService("")
-                setServiceId("")
-                setSubService("")
-                setSubServiceId("")
-                setDescription("")
-                setCity("Karachi")
-                setResidenceType("")
-                setNearestLandmark("")
-                setZone("")
-                setAddress("")
-                setScheduleDate("")
-                setScheduleTo("Worker")
-                setFollowupdate("")
-                setWorkerObj("")
-                setHelpers([])
-                setVendorObj("")
-                setSlot([])
-                setNotes([])
-                setWorkerNotes([])
-                setExtraImages([])
-                setReceipts([])
-                setVoiceNotes([])
-                setCheckedInImage("")
-                setCheckedOutImage("")
-                setServices([])
-                setSubServices([])
-                setSelectedWorkerId("")
                 if (props.fromLeads) {
+                    // setLeadNo(`L-${generateUID()}`)
+                    setJobId(`J-${generateUID()}`)
+                    setCustomerName("")
+                    setcustomerPhone("")
+                    setFormName("")
+                    setDateCreated("")
+                    setStatus("New")
+                    setSource("")
+                    setAmount("")
+                    setService("")
+                    setServiceId("")
+                    setSubService("")
+                    setSubServiceId("")
+                    setDescription("")
+                    setCity("Karachi")
+                    setResidenceType("")
+                    setNearestLandmark("")
+                    setZone("")
+                    setAddress("")
+                    setScheduleDate(getDate())
+                    setScheduleTo("Worker")
+                    setFollowupdate("")
+                    setWorkerObj("")
+                    setHelpers([])
+                    setVendorObj("")
+                    setSlot([])
+                    setNotes([])
+                    setWorkerNotes([])
+                    setExtraImages([])
+                    setReceipts([])
+                    setVoiceNotes([])
+                    setCheckedInImage("")
+                    setCheckedOutImage("")
+                    setCheckedIn(false)
+                    setCheckedOut(false)
+                    setServices([])
+                    setSubServices([])
+                    setSelectedWorkerId("")
                     props.handleCancel()
                     props.getJobs()
                 }
@@ -425,38 +464,16 @@ export default function Calls(props) {
     let [_id, set_id] = useState()
 
     useEffect(() => {
-        // if (props.fromLeads) {
-        //     set_id(props.editObj.leadNo)
-        // } else {
-        //     console.log(selectedItem.jobId)
-        //     set_id(selectedItem.leadNo)
-        // }
-    }, [selectedItem])
-
-    useEffect(() => {
+        socket.emit("join_room", { roomname: "abc" });
         socket.on("receive_message", (data) => {
-            // if (props.fromLeads) {
-            //     currentId = props.editObj.leadNo
-            // } else {
-            //     currentId = selectedItem.leadNo
-            // }
-            // alert(`Data Id: ${data._id} Selected Id: ${_id}`)
-            // alert(`${data.leadNo} ${selectedItem.leadNo}`)
-            // if (data.leadNo === selectedItem.leadNo) {
-            //     if (props.fromLeads) {
-            //         console.log(data)
-            //         props.setEditObj(data)
-            //     } else {
-            //         setSelectedItem(data)
-            //     }
-            // }
-            // console.log("aaa")
             getJobs()
         });
-        // socket.on("standing", (data) => {
-        //     console.log(data)
-        // });
-
+        socket.on("getLatest", (data) => {
+            getJobs()
+        });
+        socket.on("notifier", (data) => {
+            getJobs()
+        })
     }, [socket]);
 
     useEffect(() => {
@@ -496,8 +513,8 @@ export default function Calls(props) {
             setNearestLandmark(selectedItem.nearestLandmark)
             setZone(selectedItem.zone)
             setAddress(selectedItem.address)
-            setScheduleDate(selectedItem.scheduledDate ? selectedItem.scheduledDate : "")
-            setScheduleTo(selectedItem.scheduleTo)
+            setScheduleDate(selectedItem.scheduledDate ? selectedItem.scheduledDate : getDate())
+            setScheduleTo(selectedItem.scheduledTo ? selectedItem.scheduledTo : "Worker")
             setFollowupdate(selectedItem.followUpDate)
             setWorkerObj(selectedItem.workerObj)
             setVendorObj(selectedItem.vendorObj)
@@ -507,8 +524,11 @@ export default function Calls(props) {
             setExtraImages(selectedItem.extraImages)
             setCheckedInImage(selectedItem.checkedInImage)
             setCheckedOutImage(selectedItem.checkedOutImage)
+            setCheckedIn(selectedItem.checkedIn)
+            setCheckedOut(selectedItem.checkedOut)
             setSelectedWorkerId(selectedItem.workerObj && selectedItem.workerObj[0] ? selectedItem.workerObj[0]._id : selectedWorkerId)
             setHelpers(selectedItem.helpers)
+            setForAccounts(selectedItem.forAccounts)
             if (selectedItem.forAccounts && selectedItem.forAccounts.length && selectedItem.forAccounts[0].attachments && selectedItem.forAccounts[0].attachments.length) {
                 setReceipts(selectedItem.forAccounts[0].attachments)
             }
@@ -517,7 +537,7 @@ export default function Calls(props) {
             }
         }
         else if (!props.fromLeads && !selectedItem) {
-            setLeadNo(`L-${generateUID()}`)
+            // setLeadNo(`L-${generateUID()}`)
             setJobId(`J-${generateUID()}`)
             setCustomerName("")
             setcustomerPhone("")
@@ -536,7 +556,7 @@ export default function Calls(props) {
             setNearestLandmark("")
             setZone("")
             setAddress("")
-            setScheduleDate("")
+            setScheduleDate(getDate())
             setScheduleTo("Worker")
             setFollowupdate("")
             setWorkerObj("")
@@ -548,6 +568,8 @@ export default function Calls(props) {
             setExtraImages([])
             setCheckedInImage("")
             setCheckedOutImage("")
+            setCheckedIn(false)
+            setCheckedOut(false)
             setReceipts([])
             setVoiceNotes([])
             setSelectedWorkerId("")
@@ -582,7 +604,7 @@ export default function Calls(props) {
                 setZone(props.editObj.zone)
                 setAddress(props.editObj.address)
                 setScheduleDate(props.editObj.scheduledDate)
-                setScheduleTo(props.editObj.scheduleTo)
+                setScheduleTo(props.editObj.scheduledTo ? props.editObj.scheduledTo : "Worker")
                 setFollowupdate(props.editObj.followUpDate)
                 setWorkerObj(props.editObj.workerObj)
                 setHelpers(props.editObj.helpers)
@@ -593,6 +615,9 @@ export default function Calls(props) {
                 setExtraImages(props.editObj.extraImages)
                 setCheckedInImage(props.editObj.checkedInImage)
                 setCheckedOutImage(props.editObj.checkedOutImage)
+                setCheckedIn(props.editObj.checkedIn)
+                setCheckedOut(props.editObj.checkedOut)
+                setForAccounts(props.editObj.forAccounts)
                 setSelectedWorkerId(props.editObj.workerObj[0] ? props.editObj.workerObj[0]._id : selectedWorkerId)
                 if (props.editObj.forAccounts && props.editObj.forAccounts.length && props.editObj.forAccounts[0].attachments && props.editObj.forAccounts[0].attachments.length) {
                     setReceipts(props.editObj.forAccounts[0].attachments)
@@ -659,35 +684,31 @@ export default function Calls(props) {
     let [workshopCharges, setWorkshopCharges] = useState(0)
     let [machineryRent, setMachineryRent] = useState(0)
     let [netAmount, setNetAmount] = useState(0)
+    let [paymentReceived, setPaymentReceived] = useState(0)
+
+    let [forAccounts, setForAccounts] = useState("")
 
     const updateFinance = () => {
-
-        // let images = new FormData()
-        // for (let i = 0; i < attachments.length; i++) {
-        //     images.append("files", attachments[i].originFileObj)
-        // }
-        // var config = {
-        //     method: 'post',
-        //     url: `${process.env.REACT_APP_BACKEND_URL}/uploadMultiple`,
-        //     // url: 'http://localhost:5000/uploadMultiple',
-        //     data: images
-        // };
-        // axios(config)
-        //     .then((response) => {
         let obj = {
-            enteredBy: activeUser.username,
-            userId: activeUser._id,
-            material: material,
-            outsourcePaid: outsourcePaid,
-            fuelTransportation: fuelTransportation,
-            cardRepair: cardRepair,
-            gasRefill: gasRefill,
-            workshopCharges: workshopCharges,
-            machineryRent: machineryRent,
-            netAmount: Number(amount) - Number(Number(material) + Number(outsourcePaid) + Number(fuelTransportation) + Number(cardRepair) + Number(gasRefill) + Number(workshopCharges) + Number(machineryRent)),
-            // attachments: response.data,
+            forAccounts: [
+                {
+                    enteredBy: activeUser.username,
+                    userId: activeUser._id,
+                    material: material,
+                    outsourcePaid: outsourcePaid,
+                    fuelTransportation: fuelTransportation,
+                    cardRepair: cardRepair,
+                    gasRefill: gasRefill,
+                    workshopCharges: workshopCharges,
+                    machineryRent: machineryRent,
+                    paymentReceived: paymentReceived,
+                    netAmount: Number(amount) - Number(Number(material) + Number(outsourcePaid) + Number(fuelTransportation) + Number(cardRepair) + Number(gasRefill) + Number(workshopCharges) + Number(machineryRent)),
+                },
+            ],
+            completed: Number(amount) === Number(paymentReceived) ? true : false,
             notes: notes,
             workerNotes: workerNotes,
+            voiceNotes: voiceNotes
         }
 
         var config2 = {
@@ -708,13 +729,40 @@ export default function Calls(props) {
         // });
     }
 
+    useEffect(() => {
+        if (forAccounts && forAccounts.length) {
+            setMaterial(forAccounts[0].material)
+            setOutsourcePaid(forAccounts[0].outsourcePaid)
+            setFuelTransportation(forAccounts[0].fuelTransportation)
+            setCardRepair(forAccounts[0].cardRepair)
+            setGasRefill(forAccounts[0].gasRefill)
+            setWorkshopCharges(forAccounts[0].workshopCharges)
+            setMachineryRent(forAccounts[0].machineryRent)
+            setPaymentReceived(forAccounts[0].paymentReceived)
+        }else{
+            setMaterial(0)
+            setOutsourcePaid(0)
+            setFuelTransportation(0)
+            setCardRepair(0)
+            setGasRefill(0)
+            setWorkshopCharges(0)
+            setMachineryRent(0)
+            setPaymentReceived(0)
+        }
+    }, [forAccounts])
+
     let [preSlots, setPreSlots] = useState([])
 
     useEffect(() => {
         if (scheduleDate && selectedWorkerId) {
             if (props.fromLeads) {
                 let arr = jobs.filter((a) => `${new Date(a.scheduledDate).getDate()}${new Date(a.scheduledDate).getMonth()}${new Date(a.scheduledDate).getFullYear()}` === `${new Date(scheduleDate).getDate()}${new Date(scheduleDate).getMonth()}${new Date(scheduleDate).getFullYear()}`)
-                let arr2 = arr.filter((a) => a.workerObj[0] && a.workerObj[0]._id === selectedWorkerId)
+                let arr2;
+                if (scheduleTo === "Worker") {
+                    arr2 = arr.filter((a) => a.workerObj[0] && a.workerObj[0]._id === selectedWorkerId)
+                } else {
+                    arr2 = arr.filter((a) => a.vendorObj[0] && a.vendorObj[0]._id === selectedWorkerId)
+                }
                 let slotss = []
                 for (let i = 0; i < arr2.length; i++) {
                     if (arr2[i].leadNo !== props.editObj.leadNo) {
@@ -728,7 +776,12 @@ export default function Calls(props) {
                 setPreSlots(slotss)
             } else {
                 let arr = jobs.filter((a) => `${new Date(a.scheduledDate).getDate()}${new Date(a.scheduledDate).getMonth()}${new Date(a.scheduledDate).getFullYear()}` === `${new Date(scheduleDate).getDate()}${new Date(scheduleDate).getMonth()}${new Date(scheduleDate).getFullYear()}`)
-                let arr2 = arr.filter((a) => a.workerObj[0] && a.workerObj[0]._id === selectedWorkerId)
+                let arr2;
+                if (scheduleTo === "Worker") {
+                    arr2 = arr.filter((a) => a.workerObj[0] && a.workerObj[0]._id === selectedWorkerId)
+                } else {
+                    arr2 = arr.filter((a) => a.vendorObj[0] && a.vendorObj[0]._id === selectedWorkerId)
+                }
                 let slotss = []
                 for (let i = 0; i < arr2.length; i++) {
                     if (arr2[i].leadNo !== selectedItem.leadNo) {
@@ -812,13 +865,130 @@ export default function Calls(props) {
         const minutes = String(date.getMinutes()).padStart(2, '0');
         const seconds = String(date.getSeconds()).padStart(2, '0');
         return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-      }      
+    }
+
+    function convertTo12HourFormat(timeString) {
+        var hours = timeString;
+
+        // Convert to 12-hour format
+        if (hours == 0) {
+            hours = 12;
+        } else if (hours > 12) {
+            hours = hours - 12;
+        }
+
+        // Return the formatted string
+        return hours;
+    }
+
+    const [modalVisible, setModalVisible] = useState(false);
+    const [imageUrl, setImageUrl] = useState("");
+
+    function generateLeadNumber() {
+        var today = new Date();
+        var year = today.getFullYear();
+        var month = today.getMonth() + 1; // Add 1 to get the correct month (January is 0)
+        var day = today.getDate();
+        var dayOfYear = Math.ceil((today - new Date(year, 0, 1)) / 86400000); // Calculate the day of the year
+
+        // Pad the month and day with leading zeros if necessary
+        month = month.toString().padStart(2, '0');
+        day = day.toString().padStart(2, '0');
+
+        return year + '-' + month + '-' + day;
+    }
+
+    function generateLeadNumber(date) {
+        var today = new Date();
+        var year = today.getFullYear();
+        var month = today.getMonth() + 1; // Add 1 to get the correct month (January is 0)
+        var day = today.getDate();
+        var dayOfYear = Math.ceil((today - new Date(year, 0, 1)) / 86400000); // Calculate the day of the year
+
+        // Pad the month and day with leading zeros if necessary
+        month = month.toString().padStart(2, '0');
+        day = day.toString().padStart(2, '0');
+
+        return year + '-' + month + '-' + day;
+    }
+
+
+    function returnDate(date) {
+        var today = new Date();
+        var day = today.getDate();
+
+        day = day.toString().padStart(2, '0');
+
+        return day;
+    }
+
+    useEffect(() => {
+        if (!props.editObj && !selectedItem && jobs.length) {
+            let preLead = jobs[jobs.length - 1].leadNo
+            let preLeadNo = preLead.split("-")
+            let num = Number(preLeadNo[3]) + 1
+            let leadNoo;
+            if (preLeadNo[2] == returnDate()) {
+                leadNoo = num.toString().length == 1 ? `00${num}` : num.toString().length == 2 ? `0${num}` : `${num}`
+            } else {
+                leadNoo = "001"
+            }
+            setLeadNo(generateLeadNumber() + '-' + leadNoo)
+        }
+    }, [jobs])
+
+    function convertTo12HourFormat2(timeString) {
+        // Split the time string into hours and minutes
+        var splitTime = timeString.split(':');
+        var hours = parseInt(splitTime[0]);
+
+        // Determine whether it's AM or PM
+        var amPm = hours >= 12 ? 'pm' : 'am';
+
+        // Convert to 12-hour format
+        if (hours == 0) {
+            hours = 12;
+        } else if (hours > 12) {
+            hours = hours - 12;
+        }
+
+        // Return the formatted string
+        return hours.toString().padStart(2, '0') + amPm;
+    }
+
+
+    useEffect(() => {
+        // alert(convertTo12HourFormat2(`${new Date().getHours()}:${new Date().getMinutes()}`))
+        // if (jobs.length) {
+        //     if (!props.editObj && !selectedItem) {
+        //         let preLead = jobs[jobs.length - 1].leadNo
+        //         let preLeadNo = preLead.split("-")
+        //         let num = Number(preLeadNo[3]) + 1
+        //         let leadNoo = num.toString().length == 1 ? `00${num}` : num.toString().length == 2 ? `0${num}` : `${num}`
+        //         setLeadNo(generateLeadNumber() + '-' + leadNoo)
+        //     }
+        // }
+    }, [jobs])
+
+
+    useEffect(() => {
+
+    }, [scheduleTo])
+
+    const blockPreTime = (slotTime) => {
+        let currentHours = new Date().getHours()
+        if (currentHours >= slotTime) {
+            return true
+        } else {
+            return false
+        }
+    }
 
     return (
         <div className='d-flex'>
             {!props.fromLeads &&
                 <div className='sideDrawerCalls'>
-                    <SideDrawerCalls socket={socket} selectedItem={selectedItem} setSelectedItem={setSelectedItem} newJobs={jobs.filter((a) => !a.jobClosed).sort((a, b) => new Date(b.dateCreated).getTime() - new Date(a.dateCreated).getTime())} />
+                    <SideDrawerCalls socket={socket} selectedItem={selectedItem} setSelectedItem={setSelectedItem} newJobs={jobs.filter((a) => !a.checkedOut).sort((a, b) => new Date(b.dateCreated).getTime() - new Date(a.dateCreated).getTime())} />
                 </div>
             }
             <div className='w-100 p-3'>
@@ -859,7 +1029,17 @@ export default function Calls(props) {
                                 <div className="row" style={{ marginBottom: 15 }}>
                                     <div className="col">
                                         <label style={{ fontWeight: "bold", margin: 0 }}>Status</label>
-                                        <select onChange={(e) => setStatus(e.target.value)} value={status} type="text" className="form-control" placeholder="Status" >
+                                        <select onChange={(e) => {
+                                            setStatus(e.target.value)
+                                            if (e.target.value === "On Hold") {
+                                                setScheduleDate("")
+                                                setScheduleTo("")
+                                                setSlot([])
+                                                setSelectedWorkerId("")
+                                                setCheckedIn(false)
+                                                setCheckedOut(false)
+                                            }
+                                        }} value={status} type="text" className="form-control" placeholder="Status" >
                                             <option>New</option>
                                             <option>Not Responded</option>
                                             <option>Only Info</option>
@@ -1001,47 +1181,72 @@ export default function Calls(props) {
                                 </div>
                                 <div className="col">
                                     <label style={{ fontWeight: "bold", margin: 0 }}>Schedule To</label>
-                                    <select onChange={(e) => setScheduleTo(e.target.value)} value={scheduleTo} type="text" className="form-control" >
+                                    <select onChange={(e) => {
+                                        setScheduleTo(e.target.value)
+                                        if (e.target.value === "Worker") {
+                                            setSelectedWorkerId(workers[0]._id)
+                                        } else {
+                                            setSelectedWorkerId(vendors[0]._id)
+                                        }
+                                    }} value={scheduleTo} type="text" className="form-control" >
                                         <option>Worker</option>
-                                        {/* <option>Vendor</option> */}
+                                        <option>Vendor</option>
                                     </select>
                                 </div>
                             </div>
                             <div className="row" style={{ marginBottom: 15 }}>
                                 <div className="col-6">
-                                    <label style={{ fontWeight: "bold", margin: 0 }}>Assign Worker</label>
-                                    <select onChange={(e) => setSelectedWorkerId(e.target.value)} value={selectedWorkerId} type="text" className="form-control" >
-                                        {workers.map((a, i) => {
-                                            return (
-                                                <option value={a._id}>{a.name}</option>
-                                            )
-                                        })}
-                                    </select>
+                                    <label style={{ fontWeight: "bold", margin: 0 }}>Assign {scheduleTo}</label>
+                                    {scheduleTo === "Worker" ?
+                                        <select onChange={(e) => setSelectedWorkerId(e.target.value)} value={selectedWorkerId} type="text" className="form-control" >
+                                            {workers.map((a, i) => {
+                                                return (
+                                                    <option value={a._id}>{a.name}</option>
+                                                )
+                                            })}
+                                        </select>
+                                        :
+                                        <select onChange={(e) => setSelectedWorkerId(e.target.value)} value={selectedWorkerId} type="text" className="form-control" >
+                                            {vendors.map((a, i) => {
+                                                return (
+                                                    <option value={a._id}>{a.name}</option>
+                                                )
+                                            })}
+                                        </select>
+                                    }
                                 </div>
-                                <div className="col-6">
-                                    <label style={{ fontWeight: "bold", margin: 0 }}>Helpers</label>
-                                    <Select
-                                        mode="multiple"
-                                        size='large'
-                                        placeholder="Please select"
-                                        onChange={(e) => setHelpers(e)}
-                                        style={{ width: '100%' }}
-                                        value={helpers}
-                                    >
-                                        {workers.map((a, i) => {
-                                            return (
-                                                a._id !== selectedWorkerId &&
-                                                <option value={a.name}>{a.name}</option>
-                                            )
-                                        })}
-                                    </Select>
-                                </div>
+
+                                {scheduleTo === "Worker" &&
+                                    <div className="col-6">
+                                        <label style={{ fontWeight: "bold", margin: 0 }}>Helpers</label>
+                                        <Select
+                                            mode="multiple"
+                                            size='large'
+                                            placeholder="Please select"
+                                            onChange={(e) => setHelpers(e)}
+                                            style={{ width: '100%' }}
+                                            value={helpers}
+                                        >
+                                            {workers.map((a, i) => {
+                                                return (
+                                                    a._id !== selectedWorkerId &&
+                                                    <option value={a.name}>{a.name}</option>
+                                                )
+                                            })}
+                                        </Select>
+                                    </div>
+                                }
                             </div>
                             <div className="col-6 d-flex flex-wrap justify">
                                 <span onClick={() => {
+                                    // console.log(convertTo12HourFormat(new Date().getHours()))
                                     if (preSlots.filter((a) => a === "11am - 12pm")[0]) {
-                                        alert("slot is booked")
-                                    } else {
+                                        alert("Slot is booked")
+                                    }
+                                    else if (blockPreTime(12)) {
+                                        alert("Not Allowed to schecdule previous time")
+                                    }
+                                    else {
 
                                         let slotss = [...slot]
                                         if (slotss.filter(a => a === "11am - 12pm")[0]) {
@@ -1051,11 +1256,42 @@ export default function Calls(props) {
                                         }
                                         setSlot(slotss)
                                     }
-                                }} className="badge badge-light h-50 d-flex align-items-center justify-content-center" style={{ backgroundColor: slot.filter((a) => a === "11am - 12pm")[0] ? "green" : preSlots.filter((a) => a === "11am - 12pm")[0] ? "red" : "lightgray", width: 100, cursor: "pointer", marginRight: 5, marginBottom: 5, cursor: preSlots.filter((a) => a === "11am - 12pm")[0] ? "not-allowed" : "pointer" }}>11am - 12pm</span>
+                                }} className="badge badge-light h-50 d-flex align-items-center justify-content-center"
+                                    style={{
+                                        backgroundColor: slot.filter((a) => a === "11am - 12pm")[0]
+                                            ?
+                                            "green"
+                                            :
+                                            preSlots.filter((a) => a === "11am - 12pm")[0]
+                                                ?
+                                                "red"
+                                                :
+                                                blockPreTime(12) ?
+                                                    "red"
+                                                    :
+                                                    "lightgray"
+                                        ,
+                                        width: 100,
+                                        cursor: "pointer",
+                                        marginRight: 5,
+                                        marginBottom: 5,
+                                        cursor: preSlots.filter((a) => a === "11am - 12pm")[0]
+                                            ?
+                                            "not-allowed"
+                                            :
+                                            blockPreTime(12) ?
+                                                "not-allowed"
+                                                :
+                                                "pointer"
+                                    }}>11am - 12pm</span>
                                 <span onClick={() => {
                                     if (preSlots.filter((a) => a === "12pm - 01pm")[0]) {
-                                        alert("slot is booked")
-                                    } else {
+                                        alert("Slot is booked")
+                                    }
+                                    else if (blockPreTime(13)) {
+                                        alert("Not Allowed to schecdule previous time")
+                                    }
+                                    else {
 
                                         let slotss = [...slot]
                                         if (slotss.filter(a => a === "12pm - 01pm")[0]) {
@@ -1065,11 +1301,15 @@ export default function Calls(props) {
                                         }
                                         setSlot(slotss)
                                     }
-                                }} className="badge badge-light h-50 d-flex align-items-center justify-content-center" style={{ backgroundColor: slot.filter((a) => a === "12pm - 01pm")[0] ? "green" : preSlots.filter((a) => a === "12pm - 01pm")[0] ? "red" : "lightgray", width: 100, cursor: "pointer", marginRight: 5, marginBottom: 5, cursor: preSlots.filter((a) => a === "12pm - 01pm")[0] ? "not-allowed" : "pointer" }}>12pm - 01pm</span>
+                                }} className="badge badge-light h-50 d-flex align-items-center justify-content-center" style={{ backgroundColor: slot.filter((a) => a === "12pm - 01pm")[0] ? "green" : preSlots.filter((a) => a === "12pm - 01pm")[0] ? "red" : blockPreTime(13) ? "red" : "lightgray", width: 100, cursor: "pointer", marginRight: 5, marginBottom: 5, cursor: preSlots.filter((a) => a === "12pm - 01pm")[0] ? "not-allowed" : blockPreTime(13) ? "not-allowed" : "pointer" }}>12pm - 01pm</span>
                                 <span onClick={() => {
                                     if (preSlots.filter((a) => a === "01pm - 02pm")[0]) {
-                                        alert("slot is booked")
-                                    } else {
+                                        alert("Slot is booked")
+                                    }
+                                    else if (blockPreTime(14)) {
+                                        alert("Not Allowed to schecdule previous time")
+                                    }
+                                    else {
 
                                         let slotss = [...slot]
                                         if (slotss.filter(a => a === "01pm - 02pm")[0]) {
@@ -1079,11 +1319,15 @@ export default function Calls(props) {
                                         }
                                         setSlot(slotss)
                                     }
-                                }} className="badge badge-light h-50 d-flex align-items-center justify-content-center" style={{ backgroundColor: slot.filter((a) => a === "01pm - 02pm")[0] ? "green" : preSlots.filter((a) => a === "01pm - 02pm")[0] ? "red" : "lightgray", width: 100, cursor: "pointer", marginRight: 5, marginBottom: 5, cursor: preSlots.filter((a) => a === "01pm - 02pm")[0] ? "not-allowed" : "pointer" }}>01pm - 02pm</span>
+                                }} className="badge badge-light h-50 d-flex align-items-center justify-content-center" style={{ backgroundColor: slot.filter((a) => a === "01pm - 02pm")[0] ? "green" : preSlots.filter((a) => a === "01pm - 02pm")[0] ? "red" : blockPreTime(14) ? "red" : "lightgray", width: 100, cursor: "pointer", marginRight: 5, marginBottom: 5, cursor: preSlots.filter((a) => a === "01pm - 02pm")[0] ? "not-allowed" : blockPreTime(14) ? "not-allowed" : "pointer" }}>01pm - 02pm</span>
                                 <span onClick={() => {
                                     if (preSlots.filter((a) => a === "02pm - 03pm")[0]) {
-                                        alert("slot is booked")
-                                    } else {
+                                        alert("Slot is booked")
+                                    }
+                                    else if (blockPreTime(15)) {
+                                        alert("Not Allowed to schecdule previous time")
+                                    }
+                                    else {
 
                                         let slotss = [...slot]
                                         if (slotss.filter(a => a === "02pm - 03pm")[0]) {
@@ -1093,11 +1337,15 @@ export default function Calls(props) {
                                         }
                                         setSlot(slotss)
                                     }
-                                }} className="badge badge-light h-50 d-flex align-items-center justify-content-center" style={{ backgroundColor: slot.filter((a) => a === "02pm - 03pm")[0] ? "green" : preSlots.filter((a) => a === "02pm - 03pm")[0] ? "red" : "lightgray", width: 100, cursor: "pointer", marginRight: 5, marginBottom: 5, cursor: preSlots.filter((a) => a === "02pm - 03pm")[0] ? "not-allowed" : "pointer" }}>02pm - 03pm</span>
+                                }} className="badge badge-light h-50 d-flex align-items-center justify-content-center" style={{ backgroundColor: slot.filter((a) => a === "02pm - 03pm")[0] ? "green" : preSlots.filter((a) => a === "02pm - 03pm")[0] ? "red" : blockPreTime(15) ? "red" : "lightgray", width: 100, cursor: "pointer", marginRight: 5, marginBottom: 5, cursor: preSlots.filter((a) => a === "02pm - 03pm")[0] ? "not-allowed" : blockPreTime(15) ? "not-allowed" : "pointer" }}>02pm - 03pm</span>
                                 <span onClick={() => {
                                     if (preSlots.filter((a) => a === "03pm - 04pm")[0]) {
-                                        alert("slot is booked")
-                                    } else {
+                                        alert("Slot is booked")
+                                    }
+                                    else if (blockPreTime(16)) {
+                                        alert("Not Allowed to schecdule previous time")
+                                    }
+                                    else {
 
                                         let slotss = [...slot]
                                         if (slotss.filter(a => a === "03pm - 04pm")[0]) {
@@ -1107,11 +1355,15 @@ export default function Calls(props) {
                                         }
                                         setSlot(slotss)
                                     }
-                                }} className="badge badge-light h-50 d-flex align-items-center justify-content-center" style={{ backgroundColor: slot.filter((a) => a === "03pm - 04pm")[0] ? "green" : preSlots.filter((a) => a === "03pm - 04pm")[0] ? "red" : "lightgray", width: 100, cursor: "pointer", marginRight: 5, marginBottom: 5, cursor: preSlots.filter((a) => a === "03pm - 04pm")[0] ? "not-allowed" : "pointer" }}>03pm - 04pm</span>
+                                }} className="badge badge-light h-50 d-flex align-items-center justify-content-center" style={{ backgroundColor: slot.filter((a) => a === "03pm - 04pm")[0] ? "green" : preSlots.filter((a) => a === "03pm - 04pm")[0] ? "red" : blockPreTime(16) ? "red" : "lightgray", width: 100, cursor: "pointer", marginRight: 5, marginBottom: 5, cursor: preSlots.filter((a) => a === "03pm - 04pm")[0] ? "not-allowed" : blockPreTime(16) ? "not-allowed" : "pointer" }}>03pm - 04pm</span>
                                 <span onClick={() => {
                                     if (preSlots.filter((a) => a === "04pm - 05pm")[0]) {
-                                        alert("slot is booked")
-                                    } else {
+                                        alert("Slot is booked")
+                                    }
+                                    else if (blockPreTime(17)) {
+                                        alert("Not Allowed to schecdule previous time")
+                                    }
+                                    else {
 
                                         let slotss = [...slot]
                                         if (slotss.filter(a => a === "04pm - 05pm")[0]) {
@@ -1121,11 +1373,15 @@ export default function Calls(props) {
                                         }
                                         setSlot(slotss)
                                     }
-                                }} className="badge badge-light h-50 d-flex align-items-center justify-content-center" style={{ backgroundColor: slot.filter((a) => a === "04pm - 05pm")[0] ? "green" : preSlots.filter((a) => a === "04pm - 05pm")[0] ? "red" : "lightgray", width: 100, cursor: "pointer", marginRight: 5, marginBottom: 5, cursor: preSlots.filter((a) => a === "04pm - 05pm")[0] ? "not-allowed" : "pointer" }}>04pm - 05pm</span>
+                                }} className="badge badge-light h-50 d-flex align-items-center justify-content-center" style={{ backgroundColor: slot.filter((a) => a === "04pm - 05pm")[0] ? "green" : preSlots.filter((a) => a === "04pm - 05pm")[0] ? "red" : blockPreTime(17) ? "red" : "lightgray", width: 100, cursor: "pointer", marginRight: 5, marginBottom: 5, cursor: preSlots.filter((a) => a === "04pm - 05pm")[0] ? "not-allowed" : blockPreTime(17) ? "not-allowed" : "pointer" }}>04pm - 05pm</span>
                                 <span onClick={() => {
                                     if (preSlots.filter((a) => a === "05pm - 06pm")[0]) {
-                                        alert("slot is booked")
-                                    } else {
+                                        alert("Slot is booked")
+                                    }
+                                    else if (blockPreTime(18)) {
+                                        alert("Not Allowed to schecdule previous time")
+                                    }
+                                    else {
 
                                         let slotss = [...slot]
                                         if (slotss.filter(a => a === "05pm - 06pm")[0]) {
@@ -1135,11 +1391,15 @@ export default function Calls(props) {
                                         }
                                         setSlot(slotss)
                                     }
-                                }} className="badge badge-light h-50 d-flex align-items-center justify-content-center" style={{ backgroundColor: slot.filter((a) => a === "05pm - 06pm")[0] ? "green" : preSlots.filter((a) => a === "05pm - 06pm")[0] ? "red" : "lightgray", width: 100, cursor: "pointer", marginRight: 5, marginBottom: 5, cursor: preSlots.filter((a) => a === "05pm - 06pm")[0] ? "not-allowed" : "pointer" }}>05pm - 06pm</span>
+                                }} className="badge badge-light h-50 d-flex align-items-center justify-content-center" style={{ backgroundColor: slot.filter((a) => a === "05pm - 06pm")[0] ? "green" : preSlots.filter((a) => a === "05pm - 06pm")[0] ? "red" : blockPreTime(18) ? "red" : "lightgray", width: 100, cursor: "pointer", marginRight: 5, marginBottom: 5, cursor: preSlots.filter((a) => a === "05pm - 06pm")[0] ? "not-allowed" : blockPreTime(18) ? "not-allowed" : "pointer" }}>05pm - 06pm</span>
                                 <span onClick={() => {
                                     if (preSlots.filter((a) => a === "06pm - 07pm")[0]) {
-                                        alert("slot is booked")
-                                    } else {
+                                        alert("Slot is booked")
+                                    }
+                                    else if (blockPreTime(19)) {
+                                        alert("Not Allowed to schecdule previous time")
+                                    }
+                                    else {
 
                                         let slotss = [...slot]
                                         if (slotss.filter(a => a === "06pm - 07pm")[0]) {
@@ -1149,11 +1409,15 @@ export default function Calls(props) {
                                         }
                                         setSlot(slotss)
                                     }
-                                }} className="badge badge-light h-50 d-flex align-items-center justify-content-center" style={{ backgroundColor: slot.filter((a) => a === "06pm - 07pm")[0] ? "green" : preSlots.filter((a) => a === "06pm - 07pm")[0] ? "red" : "lightgray", width: 100, cursor: "pointer", marginRight: 5, marginBottom: 5, cursor: preSlots.filter((a) => a === "06pm - 07pm")[0] ? "not-allowed" : "pointer" }}>06pm - 07pm</span>
+                                }} className="badge badge-light h-50 d-flex align-items-center justify-content-center" style={{ backgroundColor: slot.filter((a) => a === "06pm - 07pm")[0] ? "green" : preSlots.filter((a) => a === "06pm - 07pm")[0] ? "red" : blockPreTime(19) ? "red" : "lightgray", width: 100, cursor: "pointer", marginRight: 5, marginBottom: 5, cursor: preSlots.filter((a) => a === "06pm - 07pm")[0] ? "not-allowed" : blockPreTime(19) ? "not-allowed" : "pointer" }}>06pm - 07pm</span>
                                 <span onClick={() => {
                                     if (preSlots.filter((a) => a === "07pm - 08pm")[0]) {
-                                        alert("slot is booked")
-                                    } else {
+                                        alert("Slot is booked")
+                                    }
+                                    else if (blockPreTime(20)) {
+                                        alert("Not Allowed to schecdule previous time")
+                                    }
+                                    else {
 
                                         let slotss = [...slot]
                                         if (slotss.filter(a => a === "07pm - 08pm")[0]) {
@@ -1163,11 +1427,15 @@ export default function Calls(props) {
                                         }
                                         setSlot(slotss)
                                     }
-                                }} className="badge badge-light h-50 d-flex align-items-center justify-content-center" style={{ backgroundColor: slot.filter((a) => a === "07pm - 08pm")[0] ? "green" : preSlots.filter((a) => a === "07pm - 08pm")[0] ? "red" : "lightgray", width: 100, cursor: "pointer", marginRight: 5, marginBottom: 5, cursor: preSlots.filter((a) => a === "07pm - 08pm")[0] ? "not-allowed" : "pointer" }}>07pm - 08pm</span>
+                                }} className="badge badge-light h-50 d-flex align-items-center justify-content-center" style={{ backgroundColor: slot.filter((a) => a === "07pm - 08pm")[0] ? "green" : preSlots.filter((a) => a === "07pm - 08pm")[0] ? "red" : blockPreTime(20) ? "red" : "lightgray", width: 100, cursor: "pointer", marginRight: 5, marginBottom: 5, cursor: preSlots.filter((a) => a === "07pm - 08pm")[0] ? "not-allowed" : blockPreTime(20) ? "not-allowed" : "pointer" }}>07pm - 08pm</span>
                                 <span onClick={() => {
                                     if (preSlots.filter((a) => a === "08pm - 09pm")[0]) {
-                                        alert("slot is booked")
-                                    } else {
+                                        alert("Slot is booked")
+                                    }
+                                    else if (blockPreTime(21)) {
+                                        alert("Not Allowed to schecdule previous time")
+                                    }
+                                    else {
 
                                         let slotss = [...slot]
                                         if (slotss.filter(a => a === "08pm - 09pm")[0]) {
@@ -1177,11 +1445,15 @@ export default function Calls(props) {
                                         }
                                         setSlot(slotss)
                                     }
-                                }} className="badge badge-light h-50 d-flex align-items-center justify-content-center" style={{ backgroundColor: slot.filter((a) => a === "08pm - 09pm")[0] ? "green" : preSlots.filter((a) => a === "08pm - 09pm")[0] ? "red" : "lightgray", width: 100, cursor: "pointer", marginRight: 5, marginBottom: 5, cursor: preSlots.filter((a) => a === "08pm - 09pm")[0] ? "not-allowed" : "pointer" }}>08pm - 09pm</span>
+                                }} className="badge badge-light h-50 d-flex align-items-center justify-content-center" style={{ backgroundColor: slot.filter((a) => a === "08pm - 09pm")[0] ? "green" : preSlots.filter((a) => a === "08pm - 09pm")[0] ? "red" : blockPreTime(21) ? "red" : "lightgray", width: 100, cursor: "pointer", marginRight: 5, marginBottom: 5, cursor: preSlots.filter((a) => a === "08pm - 09pm")[0] ? "not-allowed" : blockPreTime(21) ? "not-allowed" : "pointer" }}>08pm - 09pm</span>
                                 <span onClick={() => {
                                     if (preSlots.filter((a) => a === "09pm - 10pm")[0]) {
-                                        alert("slot is booked")
-                                    } else {
+                                        alert("Slot is booked")
+                                    }
+                                    else if (blockPreTime(22)) {
+                                        alert("Not Allowed to schecdule previous time")
+                                    }
+                                    else {
 
                                         let slotss = [...slot]
                                         if (slotss.filter(a => a === "09pm - 10pm")[0]) {
@@ -1191,11 +1463,15 @@ export default function Calls(props) {
                                         }
                                         setSlot(slotss)
                                     }
-                                }} className="badge badge-light h-50 d-flex align-items-center justify-content-center" style={{ backgroundColor: slot.filter((a) => a === "09pm - 10pm")[0] ? "green" : preSlots.filter((a) => a === "09pm - 10pm")[0] ? "red" : "lightgray", width: 100, cursor: "pointer", marginRight: 5, marginBottom: 5, cursor: preSlots.filter((a) => a === "09pm - 10pm")[0] ? "not-allowed" : "pointer" }}>09pm - 10pm</span>
+                                }} className="badge badge-light h-50 d-flex align-items-center justify-content-center" style={{ backgroundColor: slot.filter((a) => a === "09pm - 10pm")[0] ? "green" : preSlots.filter((a) => a === "09pm - 10pm")[0] ? "red" : blockPreTime(22) ? "red" : "lightgray", width: 100, cursor: "pointer", marginRight: 5, marginBottom: 5, cursor: preSlots.filter((a) => a === "09pm - 10pm")[0] ? "not-allowed" : blockPreTime(22) ? "not-allowed" : "pointer" }}>09pm - 10pm</span>
                                 <span onClick={() => {
                                     if (preSlots.filter((a) => a === "10pm - 11pm")[0]) {
-                                        alert("slot is booked")
-                                    } else {
+                                        alert("Slot is booked")
+                                    }
+                                    else if (blockPreTime(23)) {
+                                        alert("Not Allowed to schecdule previous time")
+                                    }
+                                    else {
 
                                         let slotss = [...slot]
                                         if (slotss.filter(a => a === "10pm - 11pm")[0]) {
@@ -1205,18 +1481,32 @@ export default function Calls(props) {
                                         }
                                         setSlot(slotss)
                                     }
-                                }} className="badge badge-light h-50 d-flex align-items-center justify-content-center" style={{ backgroundColor: slot.filter((a) => a === "10pm - 11pm")[0] ? "green" : preSlots.filter((a) => a === "10pm - 11pm")[0] ? "red" : "lightgray", width: 100, cursor: "pointer", marginRight: 5, marginBottom: 5, cursor: preSlots.filter((a) => a === "10pm - 11pm")[0] ? "not-allowed" : "pointer" }}>10pm - 11pm</span>
+                                }} className="badge badge-light h-50 d-flex align-items-center justify-content-center" style={{ backgroundColor: slot.filter((a) => a === "10pm - 11pm")[0] ? "green" : preSlots.filter((a) => a === "10pm - 11pm")[0] ? "red" : blockPreTime(23) ? "red" : "lightgray", width: 100, cursor: "pointer", marginRight: 5, marginBottom: 5, cursor: preSlots.filter((a) => a === "10pm - 11pm")[0] ? "not-allowed" : blockPreTime(23) ? "not-allowed" : "pointer" }}>10pm - 11pm</span>
                             </div>
 
                             <hr />
 
                             <h6>Schedule to Follow up</h6>
-                            <div className="row" style={{ marginBottom: 15 }}>
+                            {/* <div className="row" style={{ marginBottom: 15 }}>
                                 <div className="col-6">
                                     <label style={{ fontWeight: "bold", margin: 0 }}>Schedule Date</label>
-                                    <input disabled={scheduleDate} onChange={(e) => setFollowupdate(e.target.value)} value={followupDate} type="date" className="form-control" />
+                                    <input disabled={props.fromLeads ?
+                                        props.editObj && props.editObj.scheduledTo === "Worker" ?
+                                            props.editObj.workerObj && props.editObj.workerObj.length && props.editObj.workerObj[0]._id ? true : false
+                                            :
+                                            props.editObj && props.editObj.scheduledTo === "Vendor" ?
+                                                props.editObj.vendorObj && props.editObj.vendorObj.length && props.editObj.vendorObj[0]._id ? true : false
+                                                :
+                                                false
+                                        :
+                                        selectedItem && selectedItem.scheduledTo === "Worker" ?
+                                            selectedItem.workerObj && selectedItem.workerObj.length && selectedItem.workerObj[0]._id ? true : false
+                                            :
+                                            selectedItem && selectedItem.scheduledTo === "Vendor" ?
+                                                selectedItem.vendorObj && selectedItem.vendorObj.length && selectedItem.vendorObj[0]._id ? true : false
+                                                : false} onChange={(e) => setFollowupdate(e.target.value)} value={followupDate} type="date" className="form-control" />
                                 </div>
-                            </div>
+                            </div> */}
                         </Panel>
                         <Panel header="Notes" key="4">
                             <div className='d-flex'>
@@ -1288,7 +1578,10 @@ export default function Calls(props) {
                                 {extraImages.map((a, i) => {
                                     return (
                                         <div>
-                                            <img style={{ marginRight: 10 }} width={100} src={`${process.env.REACT_APP_BACKEND_URL}/${a}`} />
+                                            <img onClick={() => {
+                                                setModalVisible(true)
+                                                setImageUrl(`${process.env.REACT_APP_BACKEND_URL}/${a}`)
+                                            }} style={{ marginRight: 10 }} width={100} src={`${process.env.REACT_APP_BACKEND_URL}/${a}`} />
                                         </div>
                                     )
                                 })}
@@ -1296,14 +1589,24 @@ export default function Calls(props) {
                             <hr />
                             <h6>Checked In | Checked Out Images</h6>
                             <div style={{ width: "100%", display: "flex", flexWrap: "wrap" }}>
-                                <div style={{ display: "flex", flexDirection: "column" }}>
-                                    <label>Checked In</label>
-                                    <img style={{ marginRight: 10 }} width={100} src={`${process.env.REACT_APP_BACKEND_URL}/${checkedInImage}`} />
-                                </div>
-                                <div style={{ display: "flex", flexDirection: "column" }}>
-                                    <label>Checked Out</label>
-                                    <img style={{ marginRight: 10 }} width={100} src={`${process.env.REACT_APP_BACKEND_URL}/${checkedOutImage}`} />
-                                </div>
+                                {checkedInImage &&
+                                    <div style={{ display: "flex", flexDirection: "column" }}>
+                                        <label>Checked In</label>
+                                        <img onClick={() => {
+                                            setModalVisible(true)
+                                            setImageUrl(`${process.env.REACT_APP_BACKEND_URL}/${checkedInImage}`)
+                                        }} style={{ marginRight: 10 }} width={100} src={`${process.env.REACT_APP_BACKEND_URL}/${checkedInImage}`} />
+                                    </div>
+                                }
+                                {checkedOutImage &&
+                                    <div style={{ display: "flex", flexDirection: "column" }}>
+                                        <label>Checked Out</label>
+                                        <img onClick={() => {
+                                            setModalVisible(true)
+                                            setImageUrl(`${process.env.REACT_APP_BACKEND_URL}/${checkedOutImage}`)
+                                        }} style={{ marginRight: 10 }} width={100} src={`${process.env.REACT_APP_BACKEND_URL}/${checkedOutImage}`} />
+                                    </div>
+                                }
                             </div>
                             <hr />
                             <h6>Receipts</h6>
@@ -1311,7 +1614,10 @@ export default function Calls(props) {
                                 {receipts.map((a, i) => {
                                     return (
                                         <div>
-                                            <img style={{ marginRight: 10 }} width={100} src={`${process.env.REACT_APP_BACKEND_URL}/${a}`} />
+                                            <img onClick={() => {
+                                                setModalVisible(true)
+                                                setImageUrl(`${process.env.REACT_APP_BACKEND_URL}/${a}`)
+                                            }} style={{ marginRight: 10 }} width={100} src={`${process.env.REACT_APP_BACKEND_URL}/${a}`} />
                                         </div>
                                     )
                                 })}
@@ -1363,8 +1669,18 @@ export default function Calls(props) {
                                     </div>
                                     <div className="row" style={{ marginBottom: 15 }}>
                                         <div className="col">
+                                            <label style={{ fontWeight: "bold", margin: 0 }}>Payment Received</label>
+                                            <input onChange={(e) => setPaymentReceived(e.target.value)} value={paymentReceived} type="number" className="form-control" placeholder="Payment Received" />
+                                        </div>
+                                        <div className="col">
                                             <label style={{ fontWeight: "bold", margin: 0 }}>Net Amount</label>
                                             <input value={Number(amount) - Number(Number(material) + Number(outsourcePaid) + Number(fuelTransportation) + Number(cardRepair) + Number(gasRefill) + Number(workshopCharges) + Number(machineryRent))} disabled={true} type="number" className="form-control" placeholder="Net Amount" />
+                                        </div>
+                                    </div>
+                                    <div className="row" style={{ marginBottom: 15 }}>
+                                        <div className="col">
+                                            <label style={{ fontWeight: "bold", margin: 0 }}>Balance</label>
+                                            <input value={Number(amount) - Number(paymentReceived)} disabled={true} type="number" className="form-control" placeholder="Balance" />
                                         </div>
                                     </div>
                                 </form>
@@ -1385,18 +1701,27 @@ export default function Calls(props) {
                                 !props.fromFinance &&
                                 <Button type='primary' onClick={updateJob}>Update</Button>
                         }
-                        {!props.fromFinance && props.editObj && !props.editObj.jobClosed &&
+                        {/* {!props.fromFinance && props.editObj && !props.editObj.jobClosed &&
                             <Button className='ml-2' type='default' style={{ backgroundColor: "green", color: "white" }} onClick={closeJob}>Close Job</Button>
                         }
                         {!props.fromFinance && props.editObj && props.editObj.jobClosed &&
                             <Button className='ml-2' type='default' style={{ backgroundColor: "green", color: "white" }} onClick={reopenJob}>Reopen</Button>
-                        }
-                        {props.fromFinance &&
+                        } */}
+                        {props.fromFinance && Number(amount) === Number(paymentReceived) ?
+                            <Button type='primary' onClick={updateFinance}>Complete</Button>
+                            :
+                            props.fromFinance && Number(amount) !== Number(paymentReceived) &&
                             <Button type='primary' onClick={updateFinance}>Update</Button>
                         }
                     </div>
                 </div>
             </div>
+
+            <ImageModal
+                imageUrl={imageUrl}
+                visible={modalVisible}
+                onClose={() => setModalVisible(false)}
+            />
         </div >
     );
 }

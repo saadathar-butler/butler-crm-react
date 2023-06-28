@@ -1,7 +1,8 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { SearchOutlined } from '@ant-design/icons';
 import { Button, Input, Space, Table } from 'antd';
 import Highlighter from 'react-highlight-words';
+import axios from 'axios';
 const data = [
     {
         id: '1',
@@ -59,6 +60,45 @@ export default function Vendors() {
         clearFilters();
         setSearchText('');
     };
+
+    let [vendors, setVendors] = useState([])
+
+    const getVendors = () => {
+        var config = {
+            method: 'get',
+            url: `${process.env.REACT_APP_BACKEND_URL}/api/vendor`,
+            // url: 'http://localhost:5000/api/jobs'
+        };
+
+        axios(config)
+            .then((res) => {
+                console.log(res)
+                setVendors(res.data)
+            })
+    }
+
+    useEffect(() => {
+        getVendors()
+    }, [])
+
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    const handleOk = () => {
+        setIsModalOpen(false);
+    };
+
+    const handleCancel = () => {
+        setIsModalOpen(false);
+    };
+
+    const showModal = (record) => {
+        if (record.name) {
+            setIsModalOpen(true);
+        } else {
+            setIsModalOpen(true);
+        }
+    };
+
     const getColumnSearchProps = (dataIndex) => ({
         filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters, close }) => (
             <div
@@ -207,7 +247,7 @@ export default function Vendors() {
                 <h3>Vendors</h3>
                 <Button type="primary">Add Vendors</Button>
             </div>
-            <Table pagination={{ pageSize: 5 }} columns={columns} dataSource={data} />
+            <Table pagination={{ pageSize: 5 }} columns={columns} dataSource={vendors} />
         </>
     );
 };

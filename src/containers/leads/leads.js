@@ -277,7 +277,7 @@ const Leads = () => {
                     value: 'Fake',
                 },
             ],
-            onFilter: (value, record) => record.status.indexOf(value) === 0,
+            onFilter: (value, record) => record.status && value && record.status.indexOf(value) === 0,
             width: "100px",
         },
         {
@@ -403,10 +403,14 @@ const Leads = () => {
     };
 
     useEffect(() => {
+        socket.emit("join_room", { roomname: "abc" });
         socket.on("getLatest", (data) => {
             // console.log(data)
             getJobs()
         });
+        socket.on("notifier", (data) => {
+            getJobs()
+        })
     }, [socket]);
 
     return (

@@ -46,3 +46,54 @@
   top: 0;
   z-index: 999;
 }
+
+.catWiseDiv {
+  width: 100%;
+  overflow: scroll;
+}
+
+.catWiseTable {
+  width: 120%;
+  border-collapse: collapse;
+}
+
+.catWiseTable.sumWorker {
+  width: 100%;
+}
+
+.catWiseTable tr {
+  border-bottom: 0.5px solid black;
+  height: 50px;
+}
+
+.catWiseTable .heads {
+  border-bottom: 1px solid black;
+  padding-bottom: 10px;
+}
+
+.catWiseTable th,
+.catWiseTable td {
+  border: 1px solid grey;
+  padding: 0 10px;
+}
+
+.csvLink {
+  background-color: rgba(0, 128, 0, 0.897);
+  color: #fff;
+  height: 40px;
+  display: inline-block;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: max-content;
+  margin-left: auto;
+  border-radius: 5px;
+  text-decoration: none;
+}
+
+.csvLink:hover{
+  color: #fff;
+  background-color: green;
+  text-decoration: none;
+}

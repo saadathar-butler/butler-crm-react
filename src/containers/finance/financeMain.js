@@ -348,6 +348,7 @@ export default function Finance() {
     }));
 
     let [jobs, setJobs] = useState([])
+    let [completedJobs, setCompletedJobs] = useState([])
     let [editObj, setEditObj] = useState("")
 
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -382,9 +383,12 @@ export default function Finance() {
 
         axios(config)
             .then((res) => {
-                let dataa = res.data.filter((a) => a.jobClosed)
+                let dataa = res.data.filter((a) => a.checkedOut)
                 let sortedData = dataa.sort((a, b) => new Date(b.dateCreated).getTime() - new Date(a.dateCreated).getTime())
-                setJobs(sortedData)
+                let arr = sortedData.filter(a => !a.completed)
+                let arr2 = sortedData.filter(a => a.completed)
+                setJobs(arr)
+                setCompletedJobs(arr2)
             })
     }
 
@@ -403,11 +407,21 @@ export default function Finance() {
         });
     }, [socket]);
 
+    let [selectedTab, setSelectedTab] = useState("Receivables")
+
+
     return (
         <div className='mt-3 p-3'>
-            <div className='d-flex justify-content-between w-100'>
-                <h3 className='mb-4 text-center'>All Closed Jobs</h3>
-                {/* <Button onClick={showModal} type="primary">Add Lead</Button> */}
+            <div className='w-100'>
+                <h3 className='mb-4'>All {selectedTab} Jobs</h3>
+                <ul class="nav nav-tabs">
+                    <li onClick={() => setSelectedTab("Receivables")} style={{ cursor: "pointer" }} class="nav-item">
+                        <a class={`nav-link ${selectedTab === "Receivables" && "active"}`}>Receivables</a>
+                    </li>
+                    <li onClick={() => setSelectedTab("Completed")} style={{ cursor: "pointer" }} class="nav-item">
+                        <a class={`nav-link ${selectedTab === "Completed" && "active"}`}>Completed</a>
+                    </li>
+                </ul>
             </div>
             <Table
                 {...tableProps}
@@ -415,7 +429,7 @@ export default function Finance() {
                     position: [top, bottom],
                 }}
                 columns={tableColumns}
-                dataSource={jobs}
+                dataSource={selectedTab === "Receivables" ? jobs : completedJobs}
                 scroll={scroll}
             />
 

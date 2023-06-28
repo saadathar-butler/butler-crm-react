@@ -58,8 +58,17 @@ export default function Header(props) {
                                     Reports
                                 </a>
                                 <div className="dropdown-menu" aria-labelledby="navbarDropdown">
-                                    <a className="dropdown-item" href="#">Customer Reports</a>
-                                    <a className="dropdown-item" href="#">Job Reports</a>
+                                    <a className="dropdown-item" href="/reports/Sale-Reports-Detail">Sale Reports Detail</a>
+                                    <a className="dropdown-item" href="/reports/Receivavle-Reports">Receivavle Reports</a>
+                                    <a className="dropdown-item" href="/reports/Expense-Reports-Details">Expense Reports Details</a>
+                                    <a className="dropdown-item" href="/reports/Expense-Reports-Summary">Expense Reports Summary</a>
+                                    <a className="dropdown-item" href="/reports/Sale-Reports-Summary-Category-Wise">Sale Reports Summary Category Wise</a>
+                                    <a className="dropdown-item" href="/reports/Sale-Reports-Summary-Sub-Cateory-Wise">Sale Reports Summary Sub Cateory Wise</a>
+                                    <a className="dropdown-item" href="/reports/Call-Reports">Call Reports</a>
+                                    <a className="dropdown-item" href="/reports/Worker-Vendor-Reports-Details">Worker / Vendor Reports Details</a>
+                                    <a className="dropdown-item" href="/reports/Worker-Vendor-Reports-Summary">Worker / Vendor Reports Summary</a>
+                                    <a className="dropdown-item" href="/reports/Dispatch-Reports">Dispatch Reports</a>
+                                    <a className="dropdown-item" href="/reports/Dispatch-Reports-Worker-Vendor-Wise">Dispatch Reports Worker / Vendor Wise</a>
                                 </div>
                             </li>
                         }

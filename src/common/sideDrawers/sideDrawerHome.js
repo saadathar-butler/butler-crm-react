@@ -30,7 +30,7 @@ export default function SideDrawerHome(props) {
                             <li> <NavLink to="/home/mobilesubservices"><i class="fa fa-th-large"></i> <span class="nav-label">Mobile Sub Services</span></NavLink> </li>
                         }
                         {activeUser.permissions[0].workerView &&
-                            <li> <NavLink to="/home/workers"><i class="fa fa-th-large"></i> <span class="nav-label">Workers</span></NavLink> </li>
+                            <li> <NavLink to="/home/workers"><i class="fa fa-th-large"></i> <span class="nav-label">Workers/Vendors</span></NavLink> </li>
                         }
                         {/* <li> <NavLink to="/home/teams"><i class="fa fa-th-large"></i> <span class="nav-label">Teams</span></NavLink> </li> */}
                         {/* <li> <NavLink to="/home/vendorteams"><i class="fa fa-th-large"></i> <span class="nav-label">Vendor Teams</span></NavLink> </li> */}

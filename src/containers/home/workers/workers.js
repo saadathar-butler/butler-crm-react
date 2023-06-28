@@ -273,6 +273,8 @@ export default function Workers() {
         };
     }
 
+    let [workerOrVendor, setWorkerOrVendor] = useState("Worker")
+
     let [name, setName] = useState("")
     let [phone, setPhone] = useState("")
     let [cnicNumber, setCnicNumber] = useState("")
@@ -281,6 +283,13 @@ export default function Workers() {
     let [isActive, setIsActive] = useState(true)
     let [password, setPassword] = useState("")
     let [confirmPassword, setConfirmPassword] = useState("")
+
+    let [isUniformed, setIsUniformed] = useState(false)
+    let [vendorServices, setVendorServices] = useState([])
+    let [licencedNumber, setLicencedNumber] = useState("")
+    let [area, setArea] = useState("")
+    let [coverageArea, setCoverageArea] = useState("")
+    let [selectedTab, setSelectedTab] = useState("Worker")
 
     let [base1, setBase1] = useState("")
     let [base2, setBase2] = useState("")
@@ -324,7 +333,13 @@ export default function Workers() {
                 email: email,
                 address: address,
                 password: password,
-                isActive: isActive
+                isActive: isActive,
+                workerOrVendor: workerOrVendor,
+                services: vendorServices,
+                licencedNumber: licencedNumber,
+                uniformed: isUniformed,
+                area: area,
+                vendorCoverageArea: coverageArea
             }
             var config2 = {
                 method: 'post',
@@ -366,7 +381,13 @@ export default function Workers() {
             email: email,
             address: address,
             password: password,
-            isActive: isActive
+            isActive: isActive,
+            workerOrVendor: workerOrVendor,
+            services: vendorServices,
+            licencedNumber: licencedNumber,
+            uniformed: isUniformed,
+            area: area,
+            vendorCoverageArea: coverageArea
         }
         var config2 = {
             method: 'put',
@@ -393,10 +414,13 @@ export default function Workers() {
             })
     }
 
+    let [workersVendors, setWorkersVendors] = useState([])
     let [workers, setWorkers] = useState([])
+    let [vendors, setVendors] = useState([])
 
     useEffect(() => {
         getWorkers()
+        getServices()
     }, [])
 
     const getWorkers = () => {
@@ -409,23 +433,57 @@ export default function Workers() {
         axios(config)
             .then((res) => {
                 let sortedData = res.data.sort((a, b) => new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime())
-                setWorkers(sortedData)
+                setWorkersVendors(sortedData)
             })
     }
+
+    useEffect(() => {
+        let data = []
+        if (selectedTab === "Vendor") {
+            data = workersVendors.filter((a) => a.workerOrVendor && a.workerOrVendor === "Vendor")
+            setVendors(data)
+        } else {
+            data = workersVendors.filter((a) => a.workerOrVendor && a.workerOrVendor === "Worker")
+            setWorkers(data)
+        }
+    }, [workersVendors, selectedTab])
+
+    const getServices = () => {
+        var config = {
+            method: 'get',
+            url: `${process.env.REACT_APP_BACKEND_URL}/api/service`,
+        };
+
+        axios(config)
+            .then((res) => {
+                setServices(res.data)
+            })
+    }
+
+    let [services, setServices] = useState([])
 
     return (
         <>
             <div className='d-flex justify-content-between w-100'>
-                <h3>Workers</h3>
+                <h3>Workers / Vendors</h3>
                 {activeUser && activeUser.permissions[0].workerAdd &&
-                    <Button onClick={showModal} type="primary">Add Worker</Button>
+                    <Button onClick={showModal} type="primary">Add Worker / Vendor</Button>
                 }
             </div>
-            <Table pagination={{ pageSize: 5 }} columns={columns} dataSource={workers} />
+            <ul class="nav nav-tabs">
+                <li onClick={() => setSelectedTab("Worker")} style={{ cursor: "pointer" }} class="nav-item">
+                    <a class={`nav-link ${selectedTab === "Worker" && "active"}`}>Workers</a>
+                </li>
+                <li onClick={() => setSelectedTab("Vendor")} style={{ cursor: "pointer" }} class="nav-item">
+                    <a class={`nav-link ${selectedTab === "Vendor" && "active"}`}>Vendors</a>
+                </li>
+            </ul>
+            <Table pagination={{ pageSize: 5 }} columns={columns} dataSource={selectedTab === "Worker" ? workers : vendors} />
+            {/* <Table pagination={{ pageSize: 5 }} columns={columns} dataSource={workersVendors} /> */}
 
             <Modal
                 style={{ top: 20 }}
-                title={editObj ? "Update Worker" : "Add New Worker"}
+                title={editObj ? "Update Worker / Vendor" : "Add New Worker / Vendor"}
                 open={isModalOpen}
                 onOk={handleOk}
                 onCancel={handleCancel}
@@ -442,7 +500,18 @@ export default function Workers() {
                 <form>
                     <div class="row" style={{ marginBottom: 15 }}>
                         <div class="col">
-                            <label style={{ fontWeight: "bold", margin: 0 }}>Worker Name</label>
+                            <label style={{ fontWeight: "bold", margin: 0 }}>Worker Or Vendor</label>
+                            <select onChange={(e) => {
+                                setWorkerOrVendor(e.target.value)
+                            }} value={workerOrVendor} type="text" className="form-control" placeholder="Select" >
+                                <option>Worker</option>
+                                <option>Vendor</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row" style={{ marginBottom: 15 }}>
+                        <div class="col">
+                            <label style={{ fontWeight: "bold", margin: 0 }}>{workerOrVendor} Name</label>
                             <input onChange={(e) => setName(e.target.value)} value={name} type="text" class="form-control" placeholder="Worker Name" />
                         </div>
                         <div class="col">
@@ -481,6 +550,45 @@ export default function Workers() {
                         </div>
                     }
 
+                    {workerOrVendor === "Vendor" &&
+                        <div class="row" style={{ marginBottom: 15 }}>
+                            <div class="col">
+                                <label style={{ fontWeight: "bold", margin: 0 }}>Vendor Services</label>
+                                <Select
+                                    mode="multiple"
+                                    size='large'
+                                    placeholder="Please select"
+                                    onChange={(e) => setVendorServices(e)}
+                                    style={{ width: '100%' }}
+                                    value={vendorServices}
+                                >
+                                    {services.map((a, i) => {
+                                        return (
+                                            <option value={a._id}>{a.name}</option>
+                                        )
+                                    })}
+                                </Select>
+                            </div>
+                            <div class="col">
+                                <label style={{ fontWeight: "bold", margin: 0 }}>Licenced Number</label>
+                                <input onChange={(e) => setLicencedNumber(e.target.value)} value={licencedNumber} type="text" class="form-control" placeholder="Licenced Number" />
+                            </div>
+                        </div>
+                    }
+
+                    {workerOrVendor === "Vendor" &&
+                        <div class="row" style={{ marginBottom: 15 }}>
+                            <div class="col">
+                                <label style={{ fontWeight: "bold", margin: 0 }}>Area</label>
+                                <input onChange={(e) => setArea(e.target.value)} value={area} type="text" class="form-control" placeholder="Area" />
+                            </div>
+                            <div class="col">
+                                <label style={{ fontWeight: "bold", margin: 0 }}>Coverage Area</label>
+                                <input onChange={(e) => setCoverageArea(e.target.value)} value={coverageArea} type="text" class="form-control" placeholder="Coverage Area" />
+                            </div>
+                        </div>
+                    }
+
                     <div class="row" style={{ marginBottom: 15 }}>
                         <div class="col">
                             <label style={{ fontWeight: "bold", margin: 0 }}>Address</label>
@@ -488,8 +596,16 @@ export default function Workers() {
                         </div>
                     </div>
                     <div class="form-check form-switch">
-                        <input onChange={(e) => setIsActive(e.target.checked)} checked={isActive} class="form-check-input" type="checkbox" id="flexSwitchCheckDefault" />
-                        <label class="form-check-label" for="flexSwitchCheckDefault">Is Active</label>
+                        <div>
+                            <input onChange={(e) => setIsActive(e.target.checked)} checked={isActive} class="form-check-input" type="checkbox" id="flexSwitchCheckDefault" />
+                            <label class="form-check-label" for="flexSwitchCheckDefault">Is Active</label>
+                        </div>
+                        {workerOrVendor === "Vendor" &&
+                            <div>
+                                <input onChange={(e) => setIsUniformed(e.target.checked)} checked={isUniformed} class="form-check-input" type="checkbox" id="flexSwitchCheckDefault1" />
+                                <label class="form-check-label" for="flexSwitchCheckDefault1">Is Uniformed</label>
+                            </div>
+                        }
                     </div>
                 </form>
                 <hr />

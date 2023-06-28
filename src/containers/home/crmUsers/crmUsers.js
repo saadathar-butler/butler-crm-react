@@ -969,7 +969,7 @@ export default function CrmUsers() {
 
 
             <Modal
-                title={editObj.name ? "Update Permissions" : "Add Permissions"}
+                title={editObj.name ? `Update Permissions ${name}` : `Add Permissions ${name}`}
                 open={isModalOpen2}
                 onOk={() => setIsModalOpen2(false)}
                 onCancel={() => setIsModalOpen2(false)}

@@ -22,6 +22,8 @@ import LoginPage from './containers/loginPage/loginPage';
 import { io } from 'socket.io-client'
 import FinanceMain from './containers/finance/financeMain';
 import Dispatch from './containers/dispatch/dispatch';
+import axios from 'axios';
+import ReportMain from './containers/reports/reportsMain';
 
 // const socket = io('http://localhost:5000')
 const socket = io(`${process.env.REACT_APP_BACKEND_URL}`)
@@ -44,6 +46,23 @@ function App() {
     }
   }, [])
 
+  const getJobs = () => {
+    let date = `${new Date().getFullYear()}-${(new Date().getMonth() + 1).toString().padStart(2, '0')}-${new Date().getDate().toString().padStart(2, '0')}`
+    var config = {
+      method: 'post',
+      data: {
+        date: date
+      },
+      url: `${process.env.REACT_APP_BACKEND_URL}/todayDispathed`,
+    };
+
+    axios(config)
+      .then((res) => {
+        console.log(res)
+        setTodayDispatchJobs(res.data)
+      })
+  }
+
   const showNotification = () => {
     new Notification('You have a new job')
   }
@@ -51,6 +70,7 @@ function App() {
   useEffect(() => {
     socket.emit("join_room", { roomname: "abc" });
     socket.on("notifier", (data) => {
+      getJobs()
       showNotification()
     });
     if (!("Notification" in window)) {
@@ -60,8 +80,40 @@ function App() {
     }
   }, [socket])
 
+  useEffect(() => {
+    getJobs()
+  }, [])
 
-  // console.log = console.warn = console.error = () => { };
+  let [todayDispatchJobs, setTodayDispatchJobs] = useState([])
+
+  function formatAMPM(date) {
+    var hours = date.getHours();
+    var minutes = date.getMinutes();
+    var ampm = hours >= 12 ? 'pm' : 'am';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // the hour '0' should be '12'
+    minutes = minutes < 10 ? '0' + minutes : minutes;
+    var strTime = hours + ampm;
+    return strTime;
+  }
+
+  // useEffect(() => {
+  //   if (todayDispatchJobs.length) {
+  //     setInterval(() => {
+  //       for (let i = 0; i < todayDispatchJobs.length; i++) {
+  //         let lastSlotTime = Number(todayDispatchJobs[i].slot[todayDispatchJobs[i].slot.length - 1].split(" - ")[1].match(/\d+/)[0])
+  //         let currentTime = Number(formatAMPM(new Date()).match(/\d+/)[0])
+  //         let currentMinutes = new Date().getMinutes()
+  //         if (lastSlotTime <= currentTime && currentMinutes > 0) {
+  //           new Notification(`time overlapping for customer ${todayDispatchJobs[i].customerName}`).addEventListener("click", () => {
+  //             window.location.href = "https://admin.qualitybutlerservices.com/dispatch"
+  //           })
+  //         }
+  //       }
+  //     }, 300000);
+  //   }
+  // }, [todayDispatchJobs])
+
 
   return (
     <>
@@ -85,6 +137,7 @@ function App() {
           <Route exact path="/calls" component={Calls} />
           <Route exact path="/finance" component={FinanceMain} />
           <Route exact path="/dispatch" component={Dispatch} />
+          <Route exact path="/reports/:id" component={ReportMain} />
         </BrowserRouter>
       </Provider>
     </>
